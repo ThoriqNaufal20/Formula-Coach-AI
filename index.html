@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Formula Coach — Asisten Workshop Spreadsheet</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+  <div class="grid-overlay" aria-hidden="true"></div>
+
+  <header class="topbar">
+    <div class="brand">
+      <span class="brand-mark">ƒx</span>
+      <span class="brand-name">Formula Coach</span>
+    </div>
+    <p class="brand-sub">Asisten AI untuk workshop spreadsheet</p>
+
+    <div class="provider-select-wrap">
+      <label for="providerSelect" class="provider-label">Model AI</label>
+      <div class="provider-select-box">
+        <span class="provider-dot" id="providerDot" aria-hidden="true"></span>
+        <select id="providerSelect" class="provider-select">
+          <option value="groq">Groq — gratis</option>
+          <option value="gemini">Gemini — gratis</option>
+          <option value="anthropic">Claude</option>
+          <option value="openai">OpenAI</option>
+        </select>
+      </div>
+    </div>
+  </header>
+
+  <!-- Signature element: formula bar ala Excel/Sheets, jadi jangkar identitas seluruh halaman -->
+  <section class="formula-bar" role="group" aria-label="Formula bar">
+    <div class="fb-name-box" id="cellRef">A1</div>
+    <div class="fb-icons">
+      <span class="fb-icon" aria-hidden="true">✕</span>
+      <span class="fb-icon" aria-hidden="true">✓</span>
+      <span class="fb-fx" aria-hidden="true">ƒx</span>
+    </div>
+    <input
+      id="formulaInput"
+      class="fb-input"
+      type="text"
+      placeholder="=VLOOKUP(A2, Data!A:D, 3, FALSE)"
+      spellcheck="false"
+      autocomplete="off"
+    />
+  </section>
+
+  <main class="workspace">
+
+    <nav class="tabs" role="tablist" aria-label="Pilih mode">
+      <button class="tab active" data-tab="explain" role="tab" aria-selected="true">
+        <span class="tab-index">01</span>
+        <span>Jelaskan Formula</span>
+      </button>
+      <button class="tab" data-tab="fix" role="tab" aria-selected="false">
+        <span class="tab-index">02</span>
+        <span>Perbaiki Formula</span>
+      </button>
+    </nav>
+
+    <!-- PANEL: EXPLAIN -->
+    <section class="panel active" id="panel-explain" role="tabpanel">
+      <div class="panel-intro">
+        <h1>Pahami formula, bukan cuma menyalinnya.</h1>
+        <p>Tempel formula di formula bar atau kotak di bawah. Formula Coach memecahnya jadi bagian-bagian yang mudah dicerna, lengkap dengan contoh kasus penggunaan.</p>
+      </div>
+
+      <form id="explainForm" class="input-card">
+        <label class="field-label" for="explainContext">Konteks (opsional)</label>
+        <textarea id="explainContext" class="field-textarea" rows="2" placeholder="Misal: formula ini dipakai untuk mencari harga produk berdasarkan kode SKU"></textarea>
+        <button type="submit" class="btn-primary" id="explainSubmit">
+          <span>Jelaskan formula</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </form>
+
+      <div id="explainResult" class="result-area" hidden></div>
+      <div id="explainSkeleton" class="skeleton" hidden>
+        <div class="sk-line w-60"></div>
+        <div class="sk-line w-90"></div>
+        <div class="sk-line w-40"></div>
+      </div>
+      <div id="explainError" class="error-box" hidden></div>
+    </section>
+
+    <!-- PANEL: FIX -->
+    <section class="panel" id="panel-fix" role="tabpanel" hidden>
+      <div class="panel-intro">
+        <h1>Formula error? Cari tahu kenapa, bukan cuma perbaikannya.</h1>
+        <p>Formula Coach mendiagnosis jenis kesalahan, memberi versi yang sudah diperbaiki, dan menjelaskan supaya kesalahan yang sama tidak terulang.</p>
+      </div>
+
+      <form id="fixForm" class="input-card">
+        <label class="field-label" for="fixError">Pesan error / hasil yang muncul (opsional)</label>
+        <input id="fixError" class="field-input" type="text" placeholder="#N/A, #REF!, atau hasil yang tidak sesuai harapan" autocomplete="off" />
+
+        <label class="field-label" for="fixContext">Tujuan formula ini (opsional)</label>
+        <textarea id="fixContext" class="field-textarea" rows="2" placeholder="Misal: seharusnya menjumlahkan penjualan bulan ini saja"></textarea>
+
+        <button type="submit" class="btn-primary" id="fixSubmit">
+          <span>Perbaiki formula</span>
+          <span class="btn-arrow">→</span>
+        </button>
+      </form>
+
+      <div id="fixResult" class="result-area" hidden></div>
+      <div id="fixSkeleton" class="skeleton" hidden>
+        <div class="sk-line w-50"></div>
+        <div class="sk-line w-80"></div>
+        <div class="sk-line w-70"></div>
+      </div>
+      <div id="fixError2" class="error-box" hidden></div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>Formula Coach — dibuat untuk workshop spreadsheet</span>
+  </footer>
+
+  <div class="toast" id="toast" hidden></div>
+
+  <script src="app.js"></script>
+</body>
+</html>
