@@ -6,7 +6,7 @@
 <title>Formula Coach — Asisten Workshop Spreadsheet</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
@@ -34,8 +34,7 @@
     </div>
   </header>
 
-  <!-- Signature element: formula bar ala Excel/Sheets, jadi jangkar identitas seluruh halaman -->
-  <section class="formula-bar" role="group" aria-label="Formula bar">
+  <section class="formula-bar" id="formulaBar" role="group" aria-label="Formula bar">
     <div class="fb-name-box" id="cellRef">A1</div>
     <div class="fb-icons">
       <span class="fb-icon" aria-hidden="true">✕</span>
@@ -52,7 +51,7 @@
     />
   </section>
 
-  <main class="workspace">
+  <main class="workspace" id="workspace">
 
     <nav class="tabs" role="tablist" aria-label="Pilih mode">
       <button class="tab active" data-tab="explain" role="tab" aria-selected="true">
@@ -62,6 +61,10 @@
       <button class="tab" data-tab="fix" role="tab" aria-selected="false">
         <span class="tab-index">02</span>
         <span>Perbaiki Formula</span>
+      </button>
+      <button class="tab" data-tab="generate" role="tab" aria-selected="false">
+        <span class="tab-index">03</span>
+        <span>Buat Formula</span>
       </button>
     </nav>
 
@@ -119,7 +122,50 @@
       <div id="fixError2" class="error-box" hidden></div>
     </section>
 
+    <!-- PANEL: GENERATE -->
+    <section class="panel" id="panel-generate" role="tabpanel" hidden>
+      <div class="panel-intro">
+        <h1>Belum tahu formulanya? Mulai dari kebutuhanmu.</h1>
+        <p>Isi contoh data di grid, jelaskan apa yang ingin kamu hitung atau cari dengan bahasa sehari-hari, dan Formula Coach akan menyusun formulanya.</p>
+      </div>
+
+      <div class="generate-layout">
+        <div class="grid-panel">
+          <p class="grid-panel-title">Contoh data</p>
+          <p class="grid-panel-hint">Baris pertama = nama kolom. Isi sesuai data kamu sendiri.</p>
+          <div class="sheet-grid" id="sheetGrid"></div>
+          <button type="button" class="grid-reset-btn" id="gridResetBtn">Kosongkan grid</button>
+        </div>
+
+        <div class="chat-panel">
+          <div class="chat-panel-header">
+            <p class="chat-panel-title">Percakapan</p>
+            <span class="chat-history-count" id="chatHistoryCount">0/10</span>
+          </div>
+
+          <div class="chat-thread" id="chatThread">
+            <p class="chat-empty" id="chatEmpty">Isi grid di samping, lalu tulis apa yang mau kamu hitung atau cari di bawah ini.</p>
+          </div>
+
+          <form class="chat-input-row" id="generateForm">
+            <input id="generateQuestion" type="text" placeholder="Jumlahkan total harga untuk kategori Elektronik" autocomplete="off" />
+            <button type="submit" class="chat-send-btn" id="generateSubmit">Buat →</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
   </main>
+
+  <button class="theme-toggle" id="themeToggle" aria-label="Ganti tema terang/gelap" type="button">
+    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+    </svg>
+    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+      <circle cx="12" cy="12" r="5"></circle>
+      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+    </svg>
+  </button>
 
   <footer class="footer">
     <span>Formula Coach — dibuat untuk workshop spreadsheet</span>

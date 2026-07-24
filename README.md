@@ -70,7 +70,30 @@ vercel dev
 ```
 Buka `http://localhost:3000`.
 
-## Dropdown pilih provider AI (di UI)
+## Fitur baru: Buat Formula (tab 03)
+
+Tab ketiga untuk peserta yang belum tahu formulanya sama sekali — mereka isi contoh data di grid 5×5 (baris pertama = header kolom), lalu tulis kebutuhan mereka dalam bahasa natural di kotak chat. AI menyusun formula yang mengacu ke struktur data itu.
+
+- **Grid dinamis**: setiap kali generate, seluruh isi grid saat itu dikirim sebagai konteks — kalau peserta ubah data lalu generate ulang, formula bisa menyesuaikan
+- **Riwayat percakapan maksimal 10**: disimpan di `localStorage` browser peserta (bukan server), begitu masuk pertanyaan ke-11 yang paling lama otomatis dibuang (FIFO)
+- **Konteks berkelanjutan**: riwayat percakapan (maks 9 sebelumnya) ikut dikirim ke AI, jadi peserta bisa nanya lanjutan seperti "ubah formula tadi supaya exclude yang stok-nya 0"
+- **Tombol salin** ada di tiap jawaban AI di history, tidak cuma yang terakhir
+- Backend: `api/generate.js`, pakai helper `callAI` yang sama dengan 2 fitur lain — otomatis ikut dropdown provider yang aktif
+
+## Fitur baru: Toggle dark/light mode
+
+Tombol bulat mengambang di pojok kanan bawah (ikon bulan/matahari). Dua tema:
+
+| | Dark (default) | Light |
+|---|---|---|
+| Nama tema | Graphite Warm | Slate Modern |
+| Latar | Graphite `#1a1a1e` | Off-white `#f6f6f4` |
+| Aksen utama | Coral `#e8735a` | Indigo `#5b5fef` |
+| Aksen sekunder | Sage `#8fbc8f` | Teal `#0f9d78` |
+
+Font (Manrope + Inter + IBM Plex Mono) tetap sama di kedua tema — cuma warna yang berubah. Pilihan tema tersimpan di `localStorage`, jadi tetap sama di kunjungan berikutnya. Semua variabel warna ada di `styles.css` bagian `:root` (dark) dan `:root[data-theme="light"]` (light) — untuk ubah palet, cukup edit di situ.
+
+
 
 Sekarang ada dropdown **"Model AI"** di pojok kanan atas halaman. Peserta atau kamu bisa pilih provider langsung dari browser, tanpa perlu redeploy:
 
