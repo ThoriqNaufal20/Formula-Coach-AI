@@ -2,16 +2,20 @@
 const { callAI, parseJSONResponse } = require("./_ai");
 
 const SYSTEM_PROMPT = `Kamu adalah asisten instruktur dalam workshop spreadsheet (Google Sheets / Excel).
-Peserta memberi contoh struktur data (header kolom + beberapa baris data) dan menjelaskan
-dalam bahasa natural apa yang ingin mereka hitung atau cari. Tugasmu membuat formula spreadsheet
+Peserta memberi contoh struktur data (bisa lebih dari satu sheet, masing-masing dengan header kolom + beberapa baris data)
+dan menjelaskan dalam bahasa natural apa yang ingin mereka hitung atau cari. Tugasmu membuat formula spreadsheet
 yang tepat, yang mengacu ke referensi sel/kolom sesuai struktur data yang diberikan.
+
+Kalau data yang relevan ada di lebih dari satu sheet, buat formula yang merujuk ke sheet lain dengan format
+"NamaSheet!A:A" (gunakan nama sheet persis seperti yang diberikan). Kalau cukup satu sheet saja, tidak perlu
+pakai referensi lintas-sheet.
 
 Kalau ada riwayat percakapan sebelumnya, anggap pertanyaan baru bisa jadi lanjutan/modifikasi
 dari formula sebelumnya (misal "ubah supaya juga exclude yang stok-nya 0") -- gunakan konteks itu.
 
 Balas HANYA dalam format JSON valid (tanpa markdown, tanpa teks lain di luar JSON), dengan struktur persis berikut:
 {
-  "formula": "formula spreadsheet yang siap dipakai, mengacu ke referensi sel dari struktur data yang diberikan",
+  "formula": "formula spreadsheet yang siap dipakai, mengacu ke referensi sel/sheet dari struktur data yang diberikan",
   "penjelasan": "1-3 kalimat menjelaskan cara kerja formula ini dan kenapa itu menjawab kebutuhan peserta"
 }
 
@@ -19,21 +23,28 @@ Gunakan Bahasa Indonesia yang natural. Kalau permintaan peserta ambigu atau data
 tidak cukup untuk membuat formula yang tepat, tetap buat asumsi masuk akal yang paling umum,
 dan sebutkan asumsi itu secara singkat di "penjelasan".`;
 
-function formatGrid(grid) {
-  if (!grid || !Array.isArray(grid.headers) || !Array.isArray(grid.rows)) {
+function formatWorkbook(workbook) {
+  if (!workbook || !Array.isArray(workbook.sheets) || workbook.sheets.length === 0) {
     return "Tidak ada data struktur yang diberikan.";
   }
 
-  const colLetters = ["A", "B", "C", "D", "E"];
-  const headerLine = grid.headers
-    .map((h, i) => `Kolom ${colLetters[i]}: ${h && h.trim() ? h.trim() : "(kosong)"}`)
-    .join(" | ");
+  return workbook.sheets
+    .map((sheet) => {
+      const headerLine = (sheet.headers || [])
+        .map((h, i) => `Kolom ${colLetter(i)}: ${h && h.trim() ? h.trim() : "(kosong)"}`)
+        .join(" | ");
 
-  const rowLines = grid.rows
-    .map((row, i) => `Baris ${i + 2}: ` + row.map((cell) => (cell && cell.trim() ? cell.trim() : "-")).join(" | "))
-    .join("\n");
+      const rowLines = (sheet.rows || [])
+        .map((row, i) => `Baris ${i + 2}: ` + row.map((cell) => (cell && cell.trim() ? cell.trim() : "-")).join(" | "))
+        .join("\n");
 
-  return `${headerLine}\n${rowLines}`;
+      return `Sheet "${sheet.name}":\n${headerLine}\n${rowLines}`;
+    })
+    .join("\n\n");
+}
+
+function colLetter(index) {
+  return String.fromCharCode(65 + index);
 }
 
 function formatHistory(history) {
@@ -53,7 +64,7 @@ module.exports = async (req, res) => {
   }
 
   try {
-    const { grid, question, history, provider } = req.body || {};
+    const { workbook, question, history, provider } = req.body || {};
 
     if (!question || typeof question !== "string" || !question.trim()) {
       res.status(400).json({ error: "Pertanyaan tidak boleh kosong." });
@@ -61,7 +72,7 @@ module.exports = async (req, res) => {
     }
 
     const userPrompt = `Struktur data (contoh sheet):
-${formatGrid(grid)}
+${formatWorkbook(workbook)}
 
 Riwayat percakapan sebelumnya di sesi ini:
 ${formatHistory(history)}

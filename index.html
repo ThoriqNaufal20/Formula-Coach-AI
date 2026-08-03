@@ -132,9 +132,19 @@
       <div class="generate-layout">
         <div class="grid-panel">
           <p class="grid-panel-title">Contoh data</p>
-          <p class="grid-panel-hint">Baris pertama = nama kolom. Isi sesuai data kamu sendiri.</p>
-          <div class="sheet-grid" id="sheetGrid"></div>
-          <button type="button" class="grid-reset-btn" id="gridResetBtn">Kosongkan grid</button>
+          <p class="grid-panel-hint">Baris pertama = nama kolom. Bisa tambah baris, kolom, atau sheet baru sesuai kebutuhan.</p>
+
+          <div class="sheet-tabs" id="sheetTabs"></div>
+
+          <div class="sheet-grid-wrap">
+            <div class="sheet-grid" id="sheetGrid"></div>
+          </div>
+
+          <div class="grid-controls">
+            <button type="button" class="grid-add-btn" id="addRowBtn">+ Baris</button>
+            <button type="button" class="grid-add-btn" id="addColBtn">+ Kolom</button>
+            <button type="button" class="grid-reset-btn" id="gridResetBtn">Kosongkan sheet ini</button>
+          </div>
         </div>
 
         <div class="chat-panel">

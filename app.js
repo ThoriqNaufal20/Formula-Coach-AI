@@ -5,6 +5,7 @@ const state = { activeTab: "explain" };
 const el = {
   formulaInput: document.getElementById("formulaInput"),
   formulaBar: document.getElementById("formulaBar"),
+  workspace: document.getElementById("workspace"),
   cellRef: document.getElementById("cellRef"),
   tabs: document.querySelectorAll(".tab"),
   panels: {
@@ -30,6 +31,9 @@ const el = {
   providerDot: document.getElementById("providerDot"),
   themeToggle: document.getElementById("themeToggle"),
   sheetGrid: document.getElementById("sheetGrid"),
+  sheetTabs: document.getElementById("sheetTabs"),
+  addRowBtn: document.getElementById("addRowBtn"),
+  addColBtn: document.getElementById("addColBtn"),
   gridResetBtn: document.getElementById("gridResetBtn"),
   chatThread: document.getElementById("chatThread"),
   chatEmpty: document.getElementById("chatEmpty"),
@@ -82,6 +86,9 @@ el.tabs.forEach((tab) => {
 
     // Formula bar hanya relevan untuk mode Jelaskan/Perbaiki
     el.formulaBar.classList.toggle("is-hidden", target === "generate");
+
+    // Tab Generate butuh ruang lebih lebar untuk grid yang bisa banyak kolom
+    el.workspace.classList.toggle("wide", target === "generate");
 
     if (target === "fix") {
       el.formulaInput.placeholder = "=VLOOKUP(A2, Data!A:D, 3, FALSE";
@@ -307,27 +314,45 @@ function renderFixResult(data) {
 }
 
 // =====================================================================
-// GENERATE FORMULA — grid + chat
+// GENERATE FORMULA — workbook (multi-sheet) + baris/kolom dinamis + chat
 // =====================================================================
-const GRID_STORAGE_KEY = "formula-coach:grid";
+const WORKBOOK_STORAGE_KEY = "formula-coach:workbook";
 const HISTORY_STORAGE_KEY = "formula-coach:generate-history";
 const MAX_HISTORY = 10;
-const GRID_ROWS = 5;
-const GRID_COLS = 5;
-const COL_LETTERS = ["A", "B", "C", "D", "E"];
 
-function loadGrid() {
-  try {
-    const raw = localStorage.getItem(GRID_STORAGE_KEY);
-    if (raw) return JSON.parse(raw);
-  } catch {
-    /* abaikan, pakai grid kosong */
-  }
-  return Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(""));
+const MAX_ROWS = 10; // termasuk baris header
+const MIN_ROWS = 2; // minimal header + 1 baris data
+const MAX_COLS = 10;
+const MIN_COLS = 1;
+const MAX_SHEETS = 3;
+
+function colLetter(index) {
+  // Cukup untuk A-Z karena MAX_COLS jauh di bawah 26
+  return String.fromCharCode(65 + index);
 }
 
-function saveGrid(gridValues) {
-  localStorage.setItem(GRID_STORAGE_KEY, JSON.stringify(gridValues));
+function makeEmptySheet(name) {
+  return {
+    name,
+    cells: Array.from({ length: 5 }, () => Array(5).fill("")),
+  };
+}
+
+function loadWorkbook() {
+  try {
+    const raw = localStorage.getItem(WORKBOOK_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && Array.isArray(parsed.sheets) && parsed.sheets.length > 0) return parsed;
+    }
+  } catch {
+    /* abaikan, pakai workbook default */
+  }
+  return { activeSheetIndex: 0, sheets: [makeEmptySheet("Data")] };
+}
+
+function saveWorkbook() {
+  localStorage.setItem(WORKBOOK_STORAGE_KEY, JSON.stringify(workbook));
 }
 
 function loadHistory() {
@@ -344,67 +369,229 @@ function saveHistory(history) {
   localStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(history));
 }
 
-let gridValues = loadGrid();
+let workbook = loadWorkbook();
 let chatHistory = loadHistory();
 
+function activeSheet() {
+  return workbook.sheets[workbook.activeSheetIndex];
+}
+
+// ---- Sheet tabs -----------------------------------------------------
+function renderSheetTabs() {
+  el.sheetTabs.innerHTML = "";
+
+  workbook.sheets.forEach((sheet, index) => {
+    const tab = document.createElement("button");
+    tab.type = "button";
+    tab.className = "sheet-tab" + (index === workbook.activeSheetIndex ? " active" : "");
+
+    const label = document.createElement("span");
+    label.textContent = sheet.name;
+    tab.appendChild(label);
+
+    if (workbook.sheets.length > 1) {
+      const removeBtn = document.createElement("span");
+      removeBtn.className = "sheet-tab-remove";
+      removeBtn.textContent = "×";
+      removeBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        removeSheet(index);
+      });
+      tab.appendChild(removeBtn);
+    }
+
+    tab.addEventListener("click", () => {
+      workbook.activeSheetIndex = index;
+      saveWorkbook();
+      renderSheetTabs();
+      renderGrid();
+    });
+
+    tab.addEventListener("dblclick", () => renameSheet(index));
+
+    el.sheetTabs.appendChild(tab);
+  });
+
+  const addBtn = document.createElement("button");
+  addBtn.type = "button";
+  addBtn.className = "sheet-tab-add";
+  addBtn.textContent = "+";
+  addBtn.title = "Tambah sheet baru";
+  addBtn.disabled = workbook.sheets.length >= MAX_SHEETS;
+  addBtn.addEventListener("click", addSheet);
+  el.sheetTabs.appendChild(addBtn);
+}
+
+function addSheet() {
+  if (workbook.sheets.length >= MAX_SHEETS) {
+    showToast(`Maksimal ${MAX_SHEETS} sheet.`);
+    return;
+  }
+  const name = `Sheet${workbook.sheets.length + 1}`;
+  workbook.sheets.push(makeEmptySheet(name));
+  workbook.activeSheetIndex = workbook.sheets.length - 1;
+  saveWorkbook();
+  renderSheetTabs();
+  renderGrid();
+}
+
+function removeSheet(index) {
+  if (workbook.sheets.length <= 1) return;
+  workbook.sheets.splice(index, 1);
+  if (workbook.activeSheetIndex >= workbook.sheets.length) {
+    workbook.activeSheetIndex = workbook.sheets.length - 1;
+  }
+  saveWorkbook();
+  renderSheetTabs();
+  renderGrid();
+}
+
+function renameSheet(index) {
+  const current = workbook.sheets[index].name;
+  const next = window.prompt("Nama sheet baru:", current);
+  if (!next || !next.trim() || next.trim() === current) return;
+  workbook.sheets[index].name = next.trim().slice(0, 24);
+  saveWorkbook();
+  renderSheetTabs();
+}
+
+// ---- Grid (baris/kolom dinamis) --------------------------------------
 function renderGrid() {
+  const sheet = activeSheet();
+  const rowCount = sheet.cells.length;
+  const colCount = sheet.cells[0].length;
+
+  el.sheetGrid.style.gridTemplateColumns = `22px repeat(${colCount}, minmax(60px, 1fr))`;
   el.sheetGrid.innerHTML = "";
 
-  // Baris header kolom (A-E) dengan sudut kosong di kiri atas
+  // Sudut kiri-atas
   const corner = document.createElement("div");
   corner.className = "sheet-cell corner";
   el.sheetGrid.appendChild(corner);
 
-  COL_LETTERS.forEach((letter) => {
+  // Header kolom (A, B, C, ...), dengan tombol hapus kolom saat di-hover
+  for (let c = 0; c < colCount; c++) {
     const colHead = document.createElement("div");
     colHead.className = "sheet-cell colhead";
-    colHead.textContent = letter;
-    el.sheetGrid.appendChild(colHead);
-  });
+    colHead.textContent = colLetter(c);
 
-  for (let r = 0; r < GRID_ROWS; r++) {
+    if (colCount > MIN_COLS) {
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "cell-remove-btn";
+      removeBtn.textContent = "×";
+      removeBtn.title = "Hapus kolom ini";
+      removeBtn.addEventListener("click", () => removeColumn(c));
+      colHead.appendChild(removeBtn);
+    }
+
+    el.sheetGrid.appendChild(colHead);
+  }
+
+  // Baris data
+  for (let r = 0; r < rowCount; r++) {
     const rowHead = document.createElement("div");
     rowHead.className = "sheet-cell rowhead";
     rowHead.textContent = r + 1;
+
+    if (rowCount > MIN_ROWS) {
+      const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
+      removeBtn.className = "cell-remove-btn";
+      removeBtn.textContent = "×";
+      removeBtn.title = "Hapus baris ini";
+      removeBtn.addEventListener("click", () => removeRow(r));
+      rowHead.appendChild(removeBtn);
+    }
+
     el.sheetGrid.appendChild(rowHead);
 
-    for (let c = 0; c < GRID_COLS; c++) {
+    for (let c = 0; c < colCount; c++) {
       const cellWrap = document.createElement("div");
       cellWrap.className = "sheet-cell" + (r === 0 ? " sheet-row-1" : "");
 
       const input = document.createElement("input");
       input.className = "sheet-input";
       input.type = "text";
-      input.value = gridValues[r][c] || "";
+      input.value = sheet.cells[r][c] || "";
       input.placeholder = r === 0 ? "Header" : "";
-      input.dataset.row = r;
-      input.dataset.col = c;
 
       input.addEventListener("input", () => {
-        gridValues[r][c] = input.value;
-        saveGrid(gridValues);
+        sheet.cells[r][c] = input.value;
+        saveWorkbook();
       });
 
       cellWrap.appendChild(input);
       el.sheetGrid.appendChild(cellWrap);
     }
   }
+
+  el.addRowBtn.disabled = rowCount >= MAX_ROWS;
+  el.addColBtn.disabled = colCount >= MAX_COLS;
 }
 
-el.gridResetBtn.addEventListener("click", () => {
-  gridValues = Array.from({ length: GRID_ROWS }, () => Array(GRID_COLS).fill(""));
-  saveGrid(gridValues);
+function addRow() {
+  const sheet = activeSheet();
+  if (sheet.cells.length >= MAX_ROWS) {
+    showToast(`Maksimal ${MAX_ROWS} baris per sheet.`);
+    return;
+  }
+  sheet.cells.push(Array(sheet.cells[0].length).fill(""));
+  saveWorkbook();
   renderGrid();
-  showToast("Grid dikosongkan.");
+}
+
+function removeRow(rowIndex) {
+  const sheet = activeSheet();
+  if (sheet.cells.length <= MIN_ROWS) return;
+  sheet.cells.splice(rowIndex, 1);
+  saveWorkbook();
+  renderGrid();
+}
+
+function addColumn() {
+  const sheet = activeSheet();
+  if (sheet.cells[0].length >= MAX_COLS) {
+    showToast(`Maksimal ${MAX_COLS} kolom per sheet.`);
+    return;
+  }
+  sheet.cells.forEach((row) => row.push(""));
+  saveWorkbook();
+  renderGrid();
+}
+
+function removeColumn(colIndex) {
+  const sheet = activeSheet();
+  if (sheet.cells[0].length <= MIN_COLS) return;
+  sheet.cells.forEach((row) => row.splice(colIndex, 1));
+  saveWorkbook();
+  renderGrid();
+}
+
+el.addRowBtn.addEventListener("click", addRow);
+el.addColBtn.addEventListener("click", addColumn);
+
+el.gridResetBtn.addEventListener("click", () => {
+  const sheet = activeSheet();
+  sheet.cells = Array.from({ length: sheet.cells.length }, () => Array(sheet.cells[0].length).fill(""));
+  saveWorkbook();
+  renderGrid();
+  showToast(`Sheet "${sheet.name}" dikosongkan.`);
 });
 
-function gridToPayload() {
+// Seluruh sheet dikirim ke AI, bukan cuma yang sedang aktif dilihat —
+// supaya formula lintas-sheet (mis. Referensi!B:B) bisa dibuat dengan akurat.
+function workbookToPayload() {
   return {
-    headers: gridValues[0],
-    rows: gridValues.slice(1),
+    sheets: workbook.sheets.map((sheet) => ({
+      name: sheet.name,
+      headers: sheet.cells[0],
+      rows: sheet.cells.slice(1),
+    })),
   };
 }
 
+// ---- Chat thread ------------------------------------------------------
 function renderChatThread() {
   el.chatThread.innerHTML = "";
   el.chatHistoryCount.textContent = `${chatHistory.length}/${MAX_HISTORY}`;
@@ -470,13 +657,12 @@ el.generateForm.addEventListener("submit", async (e) => {
     return;
   }
 
-  const hasHeader = gridValues[0].some((cell) => cell.trim());
-  if (!hasHeader) {
-    showToast("Isi dulu minimal baris header di grid contoh data.");
+  const anyHeaderFilled = workbook.sheets.some((sheet) => sheet.cells[0].some((cell) => cell.trim()));
+  if (!anyHeaderFilled) {
+    showToast("Isi dulu minimal baris header di salah satu sheet.");
     return;
   }
 
-  // Tampilkan bubble pertanyaan user segera, sebelum respons AI datang
   const userBubbleTemp = document.createElement("div");
   userBubbleTemp.className = "bubble-user";
   userBubbleTemp.textContent = question;
@@ -489,7 +675,7 @@ el.generateForm.addEventListener("submit", async (e) => {
 
   try {
     const data = await postJSON("/api/generate", {
-      grid: gridToPayload(),
+      workbook: workbookToPayload(),
       question,
       history: chatHistory.map((h) => ({ question: h.question, formula: h.formula })),
       provider: el.providerSelect.value,
@@ -511,5 +697,6 @@ el.generateForm.addEventListener("submit", async (e) => {
   }
 });
 
+renderSheetTabs();
 renderGrid();
 renderChatThread();

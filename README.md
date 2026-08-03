@@ -70,15 +70,37 @@ vercel dev
 ```
 Buka `http://localhost:3000`.
 
-## Fitur baru: Buat Formula (tab 03)
+## Fitur baru: Buat Formula (tab 03) — grid fleksibel & multi-sheet
 
-Tab ketiga untuk peserta yang belum tahu formulanya sama sekali — mereka isi contoh data di grid 5×5 (baris pertama = header kolom), lalu tulis kebutuhan mereka dalam bahasa natural di kotak chat. AI menyusun formula yang mengacu ke struktur data itu.
+Tab ketiga untuk peserta yang belum tahu formulanya sama sekali — mereka isi contoh data di grid (baris pertama = header kolom), lalu tulis kebutuhan mereka dalam bahasa natural di kotak chat. AI menyusun formula yang mengacu ke struktur data itu.
 
-- **Grid dinamis**: setiap kali generate, seluruh isi grid saat itu dikirim sebagai konteks — kalau peserta ubah data lalu generate ulang, formula bisa menyesuaikan
-- **Riwayat percakapan maksimal 10**: disimpan di `localStorage` browser peserta (bukan server), begitu masuk pertanyaan ke-11 yang paling lama otomatis dibuang (FIFO)
-- **Konteks berkelanjutan**: riwayat percakapan (maks 9 sebelumnya) ikut dikirim ke AI, jadi peserta bisa nanya lanjutan seperti "ubah formula tadi supaya exclude yang stok-nya 0"
-- **Tombol salin** ada di tiap jawaban AI di history, tidak cuma yang terakhir
-- Backend: `api/generate.js`, pakai helper `callAI` yang sama dengan 2 fitur lain — otomatis ikut dropdown provider yang aktif
+**Grid fleksibel:**
+- Mulai dari 5×5, tapi bisa ditambah lewat tombol **"+ Baris"** dan **"+ Kolom"** — maksimal **10 baris** dan **10 kolom** per sheet
+- Hapus baris/kolom dengan hover ke header baris/kolom lalu klik ikon "×" kecil yang muncul
+- Batas ini sengaja dijaga supaya payload yang dikirim ke AI tidak membengkak (memengaruhi kecepatan respons dan penggunaan kuota provider)
+
+**Multi-sheet:**
+- Tab sheet di atas grid (mirip Excel/Google Sheets) — klik "+" untuk sheet baru, maksimal **3 sheet**
+- Double-klik nama tab untuk rename
+- **Semua sheet** (bukan cuma yang sedang dilihat) dikirim sebagai konteks ke AI setiap kali generate, supaya formula lintas-sheet bisa dibuat akurat — misalnya kalau ada sheet "Data" dan "Referensi", AI bisa hasilkan formula yang merujuk `Referensi!B:B`
+
+**Riwayat percakapan (tetap seperti sebelumnya):**
+- Maksimal 10, disimpan di `localStorage` browser peserta, FIFO begitu masuk pertanyaan ke-11
+- Riwayat (maks 9 sebelumnya) ikut dikirim sebagai konteks ke AI, jadi peserta bisa nanya lanjutan
+- Tombol salin di tiap jawaban AI di history
+
+Backend: `api/generate.js` — format data yang dikirim ke AI sekarang per-sheet dengan label nama sheet, contoh:
+```
+Sheet "Data":
+Kolom A: Nama | Kolom B: Kategori | Kolom C: Harga
+Baris 2: Kabel USB | Elektronik | 45000
+
+Sheet "Referensi":
+Kolom A: Kategori | Kolom B: Diskon
+Baris 2: Elektronik | 10%
+```
+
+
 
 ## Fitur baru: Toggle dark/light mode
 
