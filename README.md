@@ -1,6 +1,6 @@
 # Formula Coach
 
-Asisten AI untuk workshop spreadsheet: menjelaskan formula dan memperbaiki formula yang error.
+Asisten AI untuk spreadsheet: menjelaskan formula dan memperbaiki formula yang error.
 Frontend HTML/CSS/JS murni + backend serverless function (Vercel) yang memanggil API Claude (atau OpenAI).
 
 ## Struktur project
@@ -145,6 +145,22 @@ Setelah mengubah environment variable di dashboard Vercel, klik **Redeploy** (di
 - Gemini: `gemini-2.5-flash`
 - Claude: `claude-sonnet-5`
 - OpenAI: `gpt-4o-mini`
+
+## Optimasi performa (Speed Insights)
+
+Beberapa perbaikan sudah diterapkan berdasarkan hasil Vercel Speed Insights:
+
+| Metrik | Perbaikan |
+|---|---|
+| **INP** (interaktivitas lambat) | Penyimpanan grid ke `localStorage` di-debounce (400ms) — sebelumnya tersimpan di tiap ketukan huruf, sekarang ditunda sampai peserta berhenti mengetik. Lihat `debounce()` di `app.js`. |
+| **FCP** (render pertama lambat) | Google Fonts dimuat non-blocking (teknik `media="print" onload="this.media='all'"`) — konten tampil duluan dengan font fallback, font asli menyusul. |
+| **TTFB** (respons server lambat) | Ditambahkan `headers` caching di `vercel.json` untuk aset statis, dan `regions: ["sin1"]` (Singapore) supaya serverless function lebih dekat ke pengguna Asia Tenggara. |
+| **LCP** | Ikut terbantu oleh perbaikan FCP di atas, karena elemen terbesar yang biasanya jadi LCP (judul halaman) juga menunggu font yang sama. |
+
+**Catatan soal caching aset statis (`styles.css`, `app.js`, `favicon.svg`):**
+Cache di-set `max-age=3600` (1 jam) dengan `stale-while-revalidate=86400`, **bukan** cache setahun penuh. Ini sengaja, karena project ini masih aktif dikembangkan — kalau kamu deploy perubahan baru, browser peserta yang baru saja berkunjung tidak akan "terjebak" pakai versi lama sampai berhari-hari. Kalau nanti project sudah stabil dan jarang berubah, kamu bisa perpanjang durasi cache-nya di `vercel.json` untuk performa lebih maksimal.
+
+**Data di dashboard Speed Insights tidak real-time** — perubahan ini baru kelihatan efeknya setelah redeploy dan ada kunjungan baru, biasanya butuh beberapa hari untuk skor p75 stabil.
 
 ## Kustomisasi untuk workshop kamu
 - **Prompt sistem** ada di `api/explain.js` dan `api/fix.js` (variabel `SYSTEM_PROMPT`) — ubah gaya bahasa,

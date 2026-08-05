@@ -1,6 +1,23 @@
 {
   "functions": {
     "api/explain.js": { "maxDuration": 30 },
-    "api/fix.js": { "maxDuration": 30 }
-  }
+    "api/fix.js": { "maxDuration": 30 },
+    "api/generate.js": { "maxDuration": 30 },
+    "api/providers.js": { "maxDuration": 10 }
+  },
+  "regions": ["sin1"],
+  "headers": [
+    {
+      "source": "/(.*)\\.(css|js|svg)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=3600, stale-while-revalidate=86400" }
+      ]
+    },
+    {
+      "source": "/",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" }
+      ]
+    }
+  ]
 }
