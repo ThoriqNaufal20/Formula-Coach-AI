@@ -106,6 +106,14 @@ el.formulaInput.addEventListener("focus", () => {
 // =====================================================================
 // HELPERS
 // =====================================================================
+function debounce(fn, delayMs) {
+  let timer;
+  return (...args) => {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn(...args), delayMs);
+  };
+}
+
 function showToast(msg) {
   el.toast.textContent = msg;
   el.toast.hidden = false;
@@ -355,6 +363,11 @@ function saveWorkbook() {
   localStorage.setItem(WORKBOOK_STORAGE_KEY, JSON.stringify(workbook));
 }
 
+// Menulis ke localStorage itu operasi synchronous yang bisa memblokir main
+// thread sesaat. Kalau dipanggil di tiap keystroke, ini bikin interaksi
+// (mengetik di grid) terasa lambat — makanya di-debounce, bukan langsung tiap huruf.
+const debouncedSaveWorkbook = debounce(saveWorkbook, 400);
+
 function loadHistory() {
   try {
     const raw = localStorage.getItem(HISTORY_STORAGE_KEY);
@@ -517,8 +530,8 @@ function renderGrid() {
       input.placeholder = r === 0 ? "Header" : "";
 
       input.addEventListener("input", () => {
-        sheet.cells[r][c] = input.value;
-        saveWorkbook();
+        sheet.cells[r][c] = input.value; // state di memori tetap instan
+        debouncedSaveWorkbook(); // penulisan ke localStorage yang ditunda
       });
 
       cellWrap.appendChild(input);
