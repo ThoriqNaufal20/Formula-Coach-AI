@@ -127,7 +127,11 @@ async function callGemini({ system, user, maxTokens }) {
     );
   }
 
-  const model = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+  // "gemini-flash-latest" adalah alias resmi Google yang otomatis menunjuk ke
+  // model Flash stabil terbaru -- dipakai sebagai default supaya tidak perlu
+  // update manual tiap kali Google pensiunkan versi model lama (seperti yang
+  // terjadi pada gemini-2.5-flash).
+  const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const res = await fetch(url, {

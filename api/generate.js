@@ -23,6 +23,10 @@ Gunakan Bahasa Indonesia yang natural. Kalau permintaan peserta ambigu atau data
 tidak cukup untuk membuat formula yang tepat, tetap buat asumsi masuk akal yang paling umum,
 dan sebutkan asumsi itu secara singkat di "penjelasan".`;
 
+function colLetter(index) {
+  return String.fromCharCode(65 + index);
+}
+
 function formatWorkbook(workbook) {
   if (!workbook || !Array.isArray(workbook.sheets) || workbook.sheets.length === 0) {
     return "Tidak ada data struktur yang diberikan.";
@@ -43,16 +47,12 @@ function formatWorkbook(workbook) {
     .join("\n\n");
 }
 
-function colLetter(index) {
-  return String.fromCharCode(65 + index);
-}
-
 function formatHistory(history) {
   if (!Array.isArray(history) || history.length === 0) {
     return "Tidak ada riwayat percakapan sebelumnya.";
   }
   return history
-    .slice(-9) // jaga-jaga, batasi konteks yang dikirim ke AI
+    .slice(-9)
     .map((h, i) => `${i + 1}. Peserta bertanya: "${h.question}" -> Formula yang diberikan: ${h.formula}`)
     .join("\n");
 }

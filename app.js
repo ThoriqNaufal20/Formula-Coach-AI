@@ -335,7 +335,6 @@ const MIN_COLS = 1;
 const MAX_SHEETS = 3;
 
 function colLetter(index) {
-  // Cukup untuk A-Z karena MAX_COLS jauh di bawah 26
   return String.fromCharCode(65 + index);
 }
 
@@ -477,12 +476,10 @@ function renderGrid() {
   el.sheetGrid.style.gridTemplateColumns = `22px repeat(${colCount}, minmax(60px, 1fr))`;
   el.sheetGrid.innerHTML = "";
 
-  // Sudut kiri-atas
   const corner = document.createElement("div");
   corner.className = "sheet-cell corner";
   el.sheetGrid.appendChild(corner);
 
-  // Header kolom (A, B, C, ...), dengan tombol hapus kolom saat di-hover
   for (let c = 0; c < colCount; c++) {
     const colHead = document.createElement("div");
     colHead.className = "sheet-cell colhead";
@@ -501,7 +498,6 @@ function renderGrid() {
     el.sheetGrid.appendChild(colHead);
   }
 
-  // Baris data
   for (let r = 0; r < rowCount; r++) {
     const rowHead = document.createElement("div");
     rowHead.className = "sheet-cell rowhead";

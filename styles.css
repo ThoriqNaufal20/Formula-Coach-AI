@@ -508,7 +508,7 @@ body {
 }
 
 /* ===========================================================
-   GENERATE FORMULA TAB — grid + chat
+   GENERATE FORMULA TAB — grid + chat (layout ditumpuk)
 =========================================================== */
 .generate-layout {
   display: flex;
@@ -862,7 +862,6 @@ body {
    Responsive
 =========================================================== */
 @media (max-width: 720px) {
-  .generate-layout { grid-template-columns: 1fr; }
   .grid-panel { position: static; }
 }
 
