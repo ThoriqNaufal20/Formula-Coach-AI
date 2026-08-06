@@ -140,7 +140,15 @@ async function callGemini({ system, user, maxTokens }) {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user }] }],
-      generationConfig: { maxOutputTokens: maxTokens },
+      // Model Gemini terbaru (2.5+/3.x) mengaktifkan "thinking" secara default,
+      // dan token untuk berpikir itu dipotong dari jatah maxOutputTokens yang sama.
+      // Untuk tugas terstruktur sederhana seperti ini, thinking dimatikan (budget 0)
+      // supaya seluruh jatah token dipakai penuh untuk jawaban JSON -- bukan
+      // habis duluan buat proses berpikir internal lalu jawabannya kepotong.
+      generationConfig: {
+        maxOutputTokens: maxTokens,
+        thinkingConfig: { thinkingBudget: 0 },
+      },
     }),
   });
 
