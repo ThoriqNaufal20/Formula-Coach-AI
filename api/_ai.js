@@ -162,7 +162,45 @@ function parseJSONResponse(raw) {
     .replace(/^```\s*/i, "")
     .replace(/```\s*$/i, "")
     .trim();
-  return JSON.parse(cleaned);
+  return JSON.parse(sanitizeJSONControlChars(cleaned));
+}
+
+// AI kadang menaruh baris baru/tab ASLI di dalam value string (bukan \n ter-escape),
+// misal di teks penjelasan yang panjang. JSON tidak mengizinkan itu dan bikin error
+// "Unterminated string". Fungsi ini menelusuri karakter satu per satu, dan HANYA
+// meng-escape newline/tab kalau posisinya ada di DALAM string JSON (di luar string,
+// whitespace aman diabaikan oleh JSON.parse jadi tidak disentuh).
+function sanitizeJSONControlChars(str) {
+  let result = "";
+  let inString = false;
+  let escapeNext = false;
+
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+
+    if (escapeNext) {
+      result += ch;
+      escapeNext = false;
+      continue;
+    }
+    if (ch === "\\") {
+      result += ch;
+      escapeNext = true;
+      continue;
+    }
+    if (ch === '"') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+    if (inString && ch === "\n") { result += "\\n"; continue; }
+    if (inString && ch === "\r") { result += "\\r"; continue; }
+    if (inString && ch === "\t") { result += "\\t"; continue; }
+
+    result += ch;
+  }
+
+  return result;
 }
 
 // Wrapper yang meminta AI menjawab dalam JSON dan otomatis mem-parsenya.
