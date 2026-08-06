@@ -140,14 +140,14 @@ async function callGemini({ system, user, maxTokens }) {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user }] }],
-      // Model Gemini terbaru (2.5+/3.x) mengaktifkan "thinking" secara default,
-      // dan token untuk berpikir itu dipotong dari jatah maxOutputTokens yang sama.
-      // Untuk tugas terstruktur sederhana seperti ini, thinking dimatikan (budget 0)
-      // supaya seluruh jatah token dipakai penuh untuk jawaban JSON -- bukan
-      // habis duluan buat proses berpikir internal lalu jawabannya kepotong.
+      // Field thinkingConfig/thinkingBudget berbeda-beda tergantung generasi model
+      // Gemini (2.5 vs 3.x pakai nama & nilai parameter yang berbeda, dan kalau
+      // salah field/nilai malah bikin error 400 INVALID_ARGUMENT). Daripada
+      // menebak parameter yang bisa berubah lagi di masa depan, jatah token
+      // dibuat jauh lebih besar supaya walau sebagian terpakai untuk proses
+      // berpikir internal model, masih cukup sisa untuk jawaban JSON-nya.
       generationConfig: {
-        maxOutputTokens: maxTokens,
-        thinkingConfig: { thinkingBudget: 0 },
+        maxOutputTokens: Math.max(maxTokens * 3, 2048),
       },
     }),
   });
@@ -158,6 +158,14 @@ async function callGemini({ system, user, maxTokens }) {
   }
 
   const data = await res.json();
+  const finishReason = data.candidates?.[0]?.finishReason;
+
+  if (finishReason === "MAX_TOKENS") {
+    throw new Error(
+      "Gemini kehabisan jatah token sebelum selesai menjawab (kemungkinan besar habis untuk proses berpikir internal model). Coba lagi, atau ganti provider AI di dropdown."
+    );
+  }
+
   const parts = data.candidates?.[0]?.content?.parts || [];
   return parts.map((p) => p.text || "").join("");
 }
