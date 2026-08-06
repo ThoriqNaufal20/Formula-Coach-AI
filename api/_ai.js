@@ -165,4 +165,34 @@ function parseJSONResponse(raw) {
   return JSON.parse(cleaned);
 }
 
-module.exports = { callAI, parseJSONResponse, VALID_PROVIDERS, PROVIDER_LABEL };
+// Wrapper yang meminta AI menjawab dalam JSON dan otomatis mem-parsenya.
+// Kalau parse gagal (paling sering karena tanda kutip di dalam formula, mis.
+// =SUMIF(A:A,"Elektronik",B:B), tidak di-escape dengan benar oleh model, atau
+// respons terpotong), coba SEKALI LAGI dengan instruksi yang lebih tegas
+// sebelum benar-benar menyerah.
+async function callAIJson({ system, user, maxTokens = 1024, provider }) {
+  const raw = await callAI({ system, user, maxTokens, provider });
+
+  try {
+    return parseJSONResponse(raw);
+  } catch (firstError) {
+    const retryUser = `${user}
+
+PENTING: jawaban sebelumnya bukan JSON yang valid dan gagal di-parse (${firstError.message}).
+Balas ULANG hanya dengan satu objek JSON yang valid, tanpa markdown, tanpa teks lain di luar JSON.
+Kalau ada tanda kutip ganda di dalam value string (misalnya di dalam formula seperti
+=SUMIF(A:A,"Elektronik",B:B)), WAJIB di-escape jadi \\" supaya struktur JSON tidak rusak.`;
+
+    const retryRaw = await callAI({ system, user: retryUser, maxTokens, provider });
+
+    try {
+      return parseJSONResponse(retryRaw);
+    } catch (secondError) {
+      throw new Error(
+        `AI mengembalikan format yang tidak valid setelah 2 percobaan (${secondError.message}). Coba ulangi permintaan, atau ganti provider AI di dropdown.`
+      );
+    }
+  }
+}
+
+module.exports = { callAI, callAIJson, parseJSONResponse, VALID_PROVIDERS, PROVIDER_LABEL };

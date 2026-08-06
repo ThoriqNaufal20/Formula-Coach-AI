@@ -1,5 +1,5 @@
 // api/generate.js
-const { callAI, parseJSONResponse } = require("./_ai");
+const { callAIJson } = require("./_ai");
 
 const SYSTEM_PROMPT = `Kamu adalah asisten instruktur dalam workshop spreadsheet (Google Sheets / Excel).
 Peserta memberi contoh struktur data (bisa lebih dari satu sheet, masing-masing dengan header kolom + beberapa baris data)
@@ -21,7 +21,13 @@ Balas HANYA dalam format JSON valid (tanpa markdown, tanpa teks lain di luar JSO
 
 Gunakan Bahasa Indonesia yang natural. Kalau permintaan peserta ambigu atau data yang diberikan
 tidak cukup untuk membuat formula yang tepat, tetap buat asumsi masuk akal yang paling umum,
-dan sebutkan asumsi itu secara singkat di "penjelasan".`;
+dan sebutkan asumsi itu secara singkat di "penjelasan".
+
+PENTING soal format JSON: formula spreadsheet sering mengandung tanda kutip ganda di dalamnya
+(misal =SUMIF(A:A,"Elektronik",B:B) atau referensi sheet seperti Referensi!B:B yang dipasangkan
+dengan kriteria teks). Kalau tanda kutip ganda muncul di dalam value "formula", WAJIB di-escape
+jadi \\" supaya JSON tetap valid, contoh:
+"formula": "=SUMIF(A:A,\\"Elektronik\\",B:B)"`;
 
 function colLetter(index) {
   return String.fromCharCode(65 + index);
@@ -80,8 +86,7 @@ ${formatHistory(history)}
 Permintaan peserta saat ini:
 ${question.trim()}`;
 
-    const raw = await callAI({ system: SYSTEM_PROMPT, user: userPrompt, maxTokens: 700, provider });
-    const parsed = parseJSONResponse(raw);
+    const parsed = await callAIJson({ system: SYSTEM_PROMPT, user: userPrompt, maxTokens: 900, provider });
 
     res.status(200).json(parsed);
   } catch (err) {

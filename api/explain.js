@@ -1,5 +1,5 @@
 // api/explain.js
-const { callAI, parseJSONResponse } = require("./_ai");
+const { callAIJson } = require("./_ai");
 
 const SYSTEM_PROMPT = `Kamu adalah asisten instruktur dalam workshop spreadsheet (Google Sheets / Excel).
 Tugasmu menjelaskan formula spreadsheet dengan jelas untuk peserta yang sedang belajar,
@@ -16,7 +16,12 @@ Balas HANYA dalam format JSON valid (tanpa markdown, tanpa teks lain di luar JSO
 }
 
 Gunakan Bahasa Indonesia yang natural dan mudah dipahami peserta workshop, bukan bahasa teknis yang kaku.
-Pecah "bagian" menjadi potongan-potongan logis (misal per argumen fungsi), jangan hanya satu bagian besar.`;
+Pecah "bagian" menjadi potongan-potongan logis (misal per argumen fungsi), jangan hanya satu bagian besar.
+
+PENTING soal format JSON: formula spreadsheet sering mengandung tanda kutip ganda di dalamnya
+(misal =SUMIF(A:A,"Elektronik",B:B)). Kalau formula seperti ini muncul di value manapun,
+tanda kutip di dalamnya WAJIB di-escape jadi \\" supaya JSON tetap valid, contoh:
+"kode": "=SUMIF(A:A,\\"Elektronik\\",B:B)"`;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -37,8 +42,7 @@ ${formula.trim()}
 
 ${context && context.trim() ? `Konteks tambahan dari peserta: ${context.trim()}` : "Tidak ada konteks tambahan."}`;
 
-    const raw = await callAI({ system: SYSTEM_PROMPT, user: userPrompt, maxTokens: 1024, provider });
-    const parsed = parseJSONResponse(raw);
+    const parsed = await callAIJson({ system: SYSTEM_PROMPT, user: userPrompt, maxTokens: 1200, provider });
 
     res.status(200).json(parsed);
   } catch (err) {

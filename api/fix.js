@@ -1,5 +1,5 @@
 // api/fix.js
-const { callAI, parseJSONResponse } = require("./_ai");
+const { callAIJson } = require("./_ai");
 
 const SYSTEM_PROMPT = `Kamu adalah asisten instruktur dalam workshop spreadsheet (Google Sheets / Excel).
 Peserta akan mengirim formula yang error atau tidak menghasilkan output yang diharapkan.
@@ -17,7 +17,12 @@ Balas HANYA dalam format JSON valid (tanpa markdown, tanpa teks lain di luar JSO
 
 Jika formula yang dikirim peserta sebenarnya sudah benar, katakan itu dengan jujur di "diagnosis",
 isi "formula_perbaikan" dengan formula yang sama, dan jelaskan kenapa formula itu sudah tepat.
-Gunakan Bahasa Indonesia yang natural dan suportif, seperti instruktur yang membimbing, bukan menghakimi.`;
+Gunakan Bahasa Indonesia yang natural dan suportif, seperti instruktur yang membimbing, bukan menghakimi.
+
+PENTING soal format JSON: formula spreadsheet sering mengandung tanda kutip ganda di dalamnya
+(misal =SUMIF(A:A,"Elektronik",B:B)). Kalau formula seperti ini muncul di value manapun,
+tanda kutip di dalamnya WAJIB di-escape jadi \\" supaya JSON tetap valid, contoh:
+"formula_perbaikan": "=SUMIF(A:A,\\"Elektronik\\",B:B)"`;
 
 module.exports = async (req, res) => {
   if (req.method !== "POST") {
@@ -39,8 +44,7 @@ ${formula.trim()}
 ${errorMessage && errorMessage.trim() ? `Pesan error / hasil yang muncul: ${errorMessage.trim()}` : "Tidak ada pesan error spesifik yang dilaporkan."}
 ${context && context.trim() ? `Konteks tambahan (tujuan formula ini): ${context.trim()}` : ""}`;
 
-    const raw = await callAI({ system: SYSTEM_PROMPT, user: userPrompt, maxTokens: 1024, provider });
-    const parsed = parseJSONResponse(raw);
+    const parsed = await callAIJson({ system: SYSTEM_PROMPT, user: userPrompt, maxTokens: 1200, provider });
 
     res.status(200).json(parsed);
   } catch (err) {
