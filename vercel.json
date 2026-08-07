@@ -1,4 +1,5 @@
 {
+  "outputDirectory": ".",
   "functions": {
     "api/explain.js": { "maxDuration": 30 },
     "api/fix.js": { "maxDuration": 30 },
