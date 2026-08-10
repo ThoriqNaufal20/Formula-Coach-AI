@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Formula Coach — Asisten Spreadsheet</title>
+<title>Formula Coach — Asisten Workshop Spreadsheet</title>
 <link rel="icon" type="image/svg+xml" href="favicon.svg" />
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -33,15 +33,15 @@
       <span class="brand-mark">ƒx</span>
       <span class="brand-name">Formula Coach</span>
     </div>
-    <p class="brand-sub">Asisten AI untuk spreadsheet</p>
+    <p class="brand-sub">Asisten AI untuk workshop spreadsheet</p>
 
     <div class="provider-select-wrap">
       <label for="providerSelect" class="provider-label">Model AI</label>
       <div class="provider-select-box">
         <span class="provider-dot" id="providerDot" aria-hidden="true"></span>
         <select id="providerSelect" class="provider-select">
-          <option value="gemini">Gemini</option>
-          <option value="groq">Groq </option>
+          <option value="groq">Groq — gratis</option>
+          <option value="gemini">Gemini — gratis</option>
           <option value="anthropic">Claude</option>
           <option value="openai">OpenAI</option>
         </select>
@@ -81,6 +81,7 @@
         <span class="tab-index">03</span>
         <span>Buat Formula</span>
       </button>
+      <span class="tab-indicator" id="tabIndicator" aria-hidden="true"></span>
     </nav>
 
     <!-- PANEL: EXPLAIN -->
@@ -96,6 +97,7 @@
         <button type="submit" class="btn-primary" id="explainSubmit">
           <span>Jelaskan formula</span>
           <span class="btn-arrow">→</span>
+          <span class="btn-spinner" hidden></span>
         </button>
       </form>
 
@@ -125,6 +127,7 @@
         <button type="submit" class="btn-primary" id="fixSubmit">
           <span>Perbaiki formula</span>
           <span class="btn-arrow">→</span>
+          <span class="btn-spinner" hidden></span>
         </button>
       </form>
 
@@ -174,7 +177,10 @@
 
           <form class="chat-input-row" id="generateForm">
             <input id="generateQuestion" type="text" placeholder="Jumlahkan total harga untuk kategori Elektronik" autocomplete="off" />
-            <button type="submit" class="chat-send-btn" id="generateSubmit">Buat →</button>
+            <button type="submit" class="chat-send-btn" id="generateSubmit">
+              <span class="btn-label">Buat →</span>
+              <span class="btn-spinner" hidden></span>
+            </button>
           </form>
         </div>
       </div>
@@ -183,20 +189,25 @@
   </main>
 
   <button class="theme-toggle" id="themeToggle" aria-label="Ganti tema terang/gelap" type="button">
-    <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
-    </svg>
-    <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-      <circle cx="12" cy="12" r="5"></circle>
-      <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
-    </svg>
+    <span class="theme-toggle-icons">
+      <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+      </svg>
+      <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <circle cx="12" cy="12" r="5"></circle>
+        <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path>
+      </svg>
+    </span>
   </button>
 
   <footer class="footer">
-    <span>Formula Coach AI untuk Spreadsheet</span>
+    <span>Formula Coach — dibuat untuk workshop spreadsheet</span>
   </footer>
 
-  <div class="toast" id="toast" hidden></div>
+  <div class="toast" id="toast" hidden>
+    <span id="toastText"></span>
+    <span class="toast-progress" id="toastProgress"></span>
+  </div>
 
   <script src="app.js"></script>
 

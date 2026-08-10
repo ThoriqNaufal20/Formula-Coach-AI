@@ -8,6 +8,7 @@ const el = {
   workspace: document.getElementById("workspace"),
   cellRef: document.getElementById("cellRef"),
   tabs: document.querySelectorAll(".tab"),
+  tabIndicator: document.getElementById("tabIndicator"),
   panels: {
     explain: document.getElementById("panel-explain"),
     fix: document.getElementById("panel-fix"),
@@ -27,6 +28,8 @@ const el = {
   fixSkeleton: document.getElementById("fixSkeleton"),
   fixError2: document.getElementById("fixError2"),
   toast: document.getElementById("toast"),
+  toastText: document.getElementById("toastText"),
+  toastProgress: document.getElementById("toastProgress"),
   providerSelect: document.getElementById("providerSelect"),
   providerDot: document.getElementById("providerDot"),
   themeToggle: document.getElementById("themeToggle"),
@@ -88,6 +91,21 @@ el.themeToggle.addEventListener("click", () => {
 // =====================================================================
 // TAB SWITCHING
 // =====================================================================
+function moveTabIndicator(tabEl) {
+  if (!tabEl) return;
+  el.tabIndicator.style.left = `${tabEl.offsetLeft}px`;
+  el.tabIndicator.style.width = `${tabEl.offsetWidth}px`;
+}
+
+function playPanelEnter(panel) {
+  // Reflow-trigger: lepas kelasnya, paksa browser "membaca ulang" elemen (reflow),
+  // baru pasang lagi -- supaya animasi CSS-nya benar-benar replay tiap kali
+  // panel diaktifkan, bukan cuma sekali di awal saat halaman pertama dimuat.
+  panel.classList.remove("panel-enter");
+  void panel.offsetWidth;
+  panel.classList.add("panel-enter");
+}
+
 el.tabs.forEach((tab) => {
   tab.addEventListener("click", () => {
     const target = tab.dataset.tab;
@@ -98,10 +116,13 @@ el.tabs.forEach((tab) => {
       t.setAttribute("aria-selected", t === tab ? "true" : "false");
     });
 
+    moveTabIndicator(tab);
+
     Object.entries(el.panels).forEach(([key, panel]) => {
       const isActive = key === target;
       panel.classList.toggle("active", isActive);
       panel.hidden = !isActive;
+      if (isActive) playPanelEnter(panel);
     });
 
     state.activeTab = target;
@@ -120,6 +141,12 @@ el.tabs.forEach((tab) => {
   });
 });
 
+// Posisikan indikator ke tab aktif saat halaman pertama dimuat, dan sesuaikan
+// lagi kalau ukuran jendela berubah (posisi/lebar tab bisa berubah di layar sempit)
+moveTabIndicator(document.querySelector(".tab.active"));
+window.addEventListener("load", () => moveTabIndicator(document.querySelector(".tab.active")));
+window.addEventListener("resize", () => moveTabIndicator(document.querySelector(".tab.active")));
+
 let cellCounter = 1;
 el.formulaInput.addEventListener("focus", () => {
   el.cellRef.textContent = "A" + cellCounter;
@@ -137,8 +164,14 @@ function debounce(fn, delayMs) {
 }
 
 function showToast(msg) {
-  el.toast.textContent = msg;
+  el.toastText.textContent = msg;
   el.toast.hidden = false;
+
+  // Reflow-trigger supaya progress bar-nya restart dari awal tiap kali toast baru muncul
+  el.toastProgress.style.animation = "none";
+  void el.toastProgress.offsetWidth;
+  el.toastProgress.style.animation = "";
+
   clearTimeout(showToast._t);
   showToast._t = setTimeout(() => (el.toast.hidden = true), 2200);
 }
@@ -162,6 +195,18 @@ async function postJSON(url, body) {
   return data;
 }
 
+// Tukar ikon panah jadi spinner berputar selagi menunggu respons AI, dan
+// balikin lagi setelah selesai -- supaya tombol tidak cuma "diam ke-disable"
+// tanpa penjelasan visual kenapa.
+function toggleButtonSpinner(button, isLoading) {
+  const spinner = button.querySelector(".btn-spinner");
+  const arrow = button.querySelector(".btn-arrow");
+  const label = button.querySelector(".btn-label");
+  if (spinner) spinner.hidden = !isLoading;
+  if (arrow) arrow.hidden = isLoading;
+  if (label) label.hidden = isLoading;
+}
+
 function setLoading(kind, isLoading) {
   const submitBtn = kind === "explain" ? el.explainSubmit : el.fixSubmit;
   const skeleton = kind === "explain" ? el.explainSkeleton : el.fixSkeleton;
@@ -169,6 +214,7 @@ function setLoading(kind, isLoading) {
   const errBox = kind === "explain" ? el.explainError : el.fixError2;
 
   submitBtn.disabled = isLoading;
+  toggleButtonSpinner(submitBtn, isLoading);
   skeleton.hidden = !isLoading;
   if (isLoading) {
     result.hidden = true;
@@ -725,6 +771,7 @@ el.generateForm.addEventListener("submit", async (e) => {
   addChatSkeleton();
 
   el.generateSubmit.disabled = true;
+  toggleButtonSpinner(el.generateSubmit, true);
   el.generateQuestion.value = "";
 
   try {
