@@ -1026,6 +1026,11 @@ button:not(:disabled):active {
   animation: spin 0.6s linear infinite;
 }
 
+/* Perbaikan: display:inline-block di atas "menang" lawan atribut [hidden]
+   bawaan browser (sama-sama author-origin, jadi override normal tidak cukup).
+   Aturan ini eksplisit mengembalikan perilaku hidden yang benar. */
+.btn-spinner[hidden] { display: none; }
+
 @keyframes spin { to { transform: rotate(360deg); } }
 
 .copy-btn.copied {

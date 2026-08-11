@@ -163,6 +163,19 @@ function debounce(fn, delayMs) {
   };
 }
 
+// Ubah tombol "Salin" jadi "✓ Tersalin" sebentar sebagai konfirmasi visual
+// langsung di tombolnya, bukan cuma lewat toast.
+function flashCopyButton(btn) {
+  const originalText = btn.textContent;
+  btn.textContent = "✓ Tersalin";
+  btn.classList.add("copied");
+  clearTimeout(btn._flashTimer);
+  btn._flashTimer = setTimeout(() => {
+    btn.textContent = originalText;
+    btn.classList.remove("copied");
+  }, 1200);
+}
+
 function showToast(msg) {
   el.toastText.textContent = msg;
   el.toast.hidden = false;
@@ -381,10 +394,13 @@ function renderFixResult(data) {
   `;
   el.fixResult.hidden = false;
 
-  document.getElementById("copyFixedBtn").addEventListener("click", () => {
+  document.getElementById("copyFixedBtn").addEventListener("click", (e) => {
     navigator.clipboard
       .writeText(data.formula_perbaikan)
-      .then(() => showToast("Formula disalin ke clipboard."))
+      .then(() => {
+        flashCopyButton(e.currentTarget);
+        showToast("Formula disalin ke clipboard.");
+      })
       .catch(() => showToast("Gagal menyalin. Salin manual saja."));
   });
 }
@@ -573,7 +589,7 @@ function renderGrid() {
 
   for (let c = 0; c < colCount; c++) {
     const colHead = document.createElement("div");
-    colHead.className = "sheet-cell colhead";
+    colHead.className = "sheet-cell colhead" + (c === lastAddedColIndex ? " cell-flash" : "");
     colHead.textContent = colLetter(c);
 
     if (colCount > MIN_COLS) {
@@ -591,7 +607,7 @@ function renderGrid() {
 
   for (let r = 0; r < rowCount; r++) {
     const rowHead = document.createElement("div");
-    rowHead.className = "sheet-cell rowhead";
+    rowHead.className = "sheet-cell rowhead" + (r === lastAddedRowIndex ? " cell-flash" : "");
     rowHead.textContent = r + 1;
 
     if (rowCount > MIN_ROWS) {
@@ -607,8 +623,9 @@ function renderGrid() {
     fragment.appendChild(rowHead);
 
     for (let c = 0; c < colCount; c++) {
+      const isFlashCell = r === lastAddedRowIndex || c === lastAddedColIndex;
       const cellWrap = document.createElement("div");
-      cellWrap.className = "sheet-cell" + (r === 0 ? " sheet-row-1" : "");
+      cellWrap.className = "sheet-cell" + (r === 0 ? " sheet-row-1" : "") + (isFlashCell ? " cell-flash" : "");
 
       const input = document.createElement("input");
       input.className = "sheet-input";
@@ -626,9 +643,19 @@ function renderGrid() {
   el.sheetGrid.innerHTML = "";
   el.sheetGrid.appendChild(fragment);
 
+  // Sudah dipakai untuk render kali ini -- reset supaya render berikutnya
+  // (mis. pindah sheet lalu balik lagi) tidak ikut nge-flash ulang.
+  lastAddedRowIndex = null;
+  lastAddedColIndex = null;
+
   el.addRowBtn.disabled = rowCount >= MAX_ROWS;
   el.addColBtn.disabled = colCount >= MAX_COLS;
 }
+
+// Menandai baris/kolom yang baru saja ditambahkan, supaya renderGrid() tahu
+// mana yang perlu di-highlight sebentar (class .cell-flash).
+let lastAddedRowIndex = null;
+let lastAddedColIndex = null;
 
 function addRow() {
   const sheet = activeSheet();
@@ -637,6 +664,8 @@ function addRow() {
     return;
   }
   sheet.cells.push(Array(sheet.cells[0].length).fill(""));
+  lastAddedRowIndex = sheet.cells.length - 1;
+  lastAddedColIndex = null;
   saveWorkbook();
   renderGrid();
 }
@@ -656,6 +685,8 @@ function addColumn() {
     return;
   }
   sheet.cells.forEach((row) => row.push(""));
+  lastAddedColIndex = sheet.cells[0].length - 1;
+  lastAddedRowIndex = null;
   saveWorkbook();
   renderGrid();
 }
@@ -723,7 +754,10 @@ function renderChatThread() {
     btn.addEventListener("click", () => {
       navigator.clipboard
         .writeText(btn.dataset.formula)
-        .then(() => showToast("Formula disalin ke clipboard."))
+        .then(() => {
+          flashCopyButton(btn);
+          showToast("Formula disalin ke clipboard.");
+        })
         .catch(() => showToast("Gagal menyalin. Salin manual saja."));
     });
   });
@@ -736,8 +770,7 @@ function addChatSkeleton() {
   skeleton.className = "chat-skeleton";
   skeleton.id = "chatSkeleton";
   skeleton.innerHTML = `
-    <div class="sk-line w-70"></div>
-    <div class="sk-line w-50"></div>
+    <div class="typing-dots"><span></span><span></span><span></span></div>
   `;
   el.chatThread.appendChild(skeleton);
   el.chatThread.scrollTop = el.chatThread.scrollHeight;
