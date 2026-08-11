@@ -192,7 +192,13 @@ function showToast(msg) {
 function escapeHTML(str) {
   const div = document.createElement("div");
   div.textContent = str ?? "";
-  return div.innerHTML;
+  // div.innerHTML meng-escape &, <, > secara otomatis, tapi TIDAK meng-escape
+  // tanda kutip (karena di dalam text node biasa itu memang aman). Masalahnya,
+  // fungsi ini juga dipakai untuk membangun atribut HTML seperti
+  // data-formula="...". Kalau formula punya tanda kutip mentah di dalamnya
+  // (misal ="SELECT ... 'Total Qty'"), atribut itu jadi terpotong di situ.
+  // Makanya kutip ganda & tunggal di-escape manual juga di sini.
+  return div.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
 async function postJSON(url, body) {
