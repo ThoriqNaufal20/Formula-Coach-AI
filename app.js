@@ -834,6 +834,7 @@ el.generateForm.addEventListener("submit", async (e) => {
     if (chatHistory.length === 0) renderChatThread();
   } finally {
     el.generateSubmit.disabled = false;
+    toggleButtonSpinner(el.generateSubmit, false);
   }
 });
 

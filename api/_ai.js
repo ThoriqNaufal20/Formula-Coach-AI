@@ -8,6 +8,24 @@
 const VALID_PROVIDERS = ["groq", "gemini", "anthropic", "openai"];
 const DEFAULT_PROVIDER = (process.env.AI_PROVIDER || "groq").toLowerCase();
 
+// Provider AI kadang sedang sibuk sesaat (mis. Gemini "high demand" / 503,
+// atau rate limit 429) -- ini bersifat sementara, bukan error kode. Wrapper
+// ini otomatis coba ulang SEKALI setelah jeda singkat sebelum benar-benar
+// melempar error ke peserta.
+async function fetchWithRetry(url, options, { retries = 1, delayMs = 1200 } = {}) {
+  let lastRes;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    lastRes = await fetch(url, options);
+    if (lastRes.ok) return lastRes;
+
+    const isTransient = lastRes.status === 429 || (lastRes.status >= 500 && lastRes.status <= 599);
+    if (!isTransient || attempt === retries) return lastRes;
+
+    await new Promise((resolve) => setTimeout(resolve, delayMs));
+  }
+  return lastRes;
+}
+
 // Nama provider yang tampil ke user di pesan error, biar jelas API key mana yang kurang.
 const PROVIDER_LABEL = {
   groq: "Groq",
@@ -60,7 +78,7 @@ async function callAnthropic({ system, user, maxTokens }) {
     );
   }
 
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
+  const res = await fetchWithRetry("https://api.anthropic.com/v1/messages", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -94,7 +112,7 @@ async function callOpenAICompatible({ baseUrl, apiKey, apiKeyName, model, system
     );
   }
 
-  const res = await fetch(baseUrl, {
+  const res = await fetchWithRetry(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -134,7 +152,7 @@ async function callGemini({ system, user, maxTokens }) {
   const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithRetry(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
