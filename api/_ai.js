@@ -8,6 +8,14 @@
 const VALID_PROVIDERS = ["groq", "gemini", "anthropic", "openai"];
 const DEFAULT_PROVIDER = (process.env.AI_PROVIDER || "groq").toLowerCase();
 
+// Nama provider yang tampil ke user di pesan error, biar jelas API key mana yang kurang.
+const PROVIDER_LABEL = {
+  groq: "Groq",
+  gemini: "Google Gemini",
+  anthropic: "Claude (Anthropic)",
+  openai: "OpenAI",
+};
+
 // Provider AI kadang sedang sibuk sesaat (mis. Gemini "high demand" / 503,
 // atau rate limit 429) -- ini bersifat sementara, bukan error kode. Wrapper
 // ini otomatis coba ulang SEKALI setelah jeda singkat sebelum benar-benar
@@ -26,14 +34,6 @@ async function fetchWithRetry(url, options, { retries = 1, delayMs = 1200 } = {}
   return lastRes;
 }
 
-// Nama provider yang tampil ke user di pesan error, biar jelas API key mana yang kurang.
-const PROVIDER_LABEL = {
-  groq: "Groq",
-  gemini: "Google Gemini",
-  anthropic: "Claude (Anthropic)",
-  openai: "OpenAI",
-};
-
 async function callAI({ system, user, maxTokens = 1024, provider }) {
   const selected = VALID_PROVIDERS.includes((provider || "").toLowerCase())
     ? provider.toLowerCase()
@@ -46,7 +46,10 @@ async function callAI({ system, user, maxTokens = 1024, provider }) {
         apiKey: process.env.GROQ_API_KEY,
         apiKeyName: "GROQ_API_KEY",
         providerLabel: PROVIDER_LABEL.groq,
-        model: process.env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        // llama-3.3-70b-versatile resmi dipensiunkan Groq (17 Juni 2026).
+        // openai/gpt-oss-120b adalah rekomendasi migrasi resmi mereka --
+        // kualitas setara, inferensi lebih cepat.
+        model: process.env.GROQ_MODEL || "openai/gpt-oss-120b",
         system,
         user,
         maxTokens,
@@ -145,10 +148,6 @@ async function callGemini({ system, user, maxTokens }) {
     );
   }
 
-  // "gemini-flash-latest" adalah alias resmi Google yang otomatis menunjuk ke
-  // model Flash stabil terbaru -- dipakai sebagai default supaya tidak perlu
-  // update manual tiap kali Google pensiunkan versi model lama (seperti yang
-  // terjadi pada gemini-2.5-flash).
   const model = process.env.GEMINI_MODEL || "gemini-flash-latest";
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
@@ -158,14 +157,13 @@ async function callGemini({ system, user, maxTokens }) {
     body: JSON.stringify({
       system_instruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: user }] }],
-      // Field thinkingConfig/thinkingBudget berbeda-beda tergantung generasi model
-      // Gemini (2.5 vs 3.x pakai nama & nilai parameter yang berbeda, dan kalau
-      // salah field/nilai malah bikin error 400 INVALID_ARGUMENT). Daripada
-      // menebak parameter yang bisa berubah lagi di masa depan, jatah token
-      // dibuat jauh lebih besar supaya walau sebagian terpakai untuk proses
-      // berpikir internal model, masih cukup sisa untuk jawaban JSON-nya.
+      // Model Gemini terbaru pakai sebagian jatah token untuk "thinking" internal
+      // sebelum jawaban asli keluar. Budget dinaikkan dari maxTokens supaya tidak
+      // mudah terpotong (lihat catatan "Unterminated string" sebelumnya) -- TAPI
+      // dibatasi maksimal 2048 (bukan dikali terus tanpa batas) supaya generasinya
+      // tidak makan waktu terlalu lama dan memicu timeout 504 dari Vercel.
       generationConfig: {
-        maxOutputTokens: Math.max(maxTokens * 3, 2048),
+        maxOutputTokens: Math.min(Math.max(maxTokens * 2, 1024), 2048),
       },
     }),
   });
@@ -199,11 +197,10 @@ function parseJSONResponse(raw) {
   return JSON.parse(sanitizeJSONControlChars(cleaned));
 }
 
-// AI kadang menaruh baris baru/tab ASLI di dalam value string (bukan \n ter-escape),
-// misal di teks penjelasan yang panjang. JSON tidak mengizinkan itu dan bikin error
-// "Unterminated string". Fungsi ini menelusuri karakter satu per satu, dan HANYA
-// meng-escape newline/tab kalau posisinya ada di DALAM string JSON (di luar string,
-// whitespace aman diabaikan oleh JSON.parse jadi tidak disentuh).
+// AI kadang menaruh baris baru/tab ASLI di dalam value string (bukan \n ter-escape).
+// JSON tidak mengizinkan itu dan bikin error "Unterminated string". Fungsi ini
+// menelusuri karakter satu per satu, dan HANYA meng-escape newline/tab kalau
+// posisinya ada di DALAM string JSON.
 function sanitizeJSONControlChars(str) {
   let result = "";
   let inString = false;
@@ -238,10 +235,9 @@ function sanitizeJSONControlChars(str) {
 }
 
 // Wrapper yang meminta AI menjawab dalam JSON dan otomatis mem-parsenya.
-// Kalau parse gagal (paling sering karena tanda kutip di dalam formula, mis.
-// =SUMIF(A:A,"Elektronik",B:B), tidak di-escape dengan benar oleh model, atau
-// respons terpotong), coba SEKALI LAGI dengan instruksi yang lebih tegas
-// sebelum benar-benar menyerah.
+// Kalau parse gagal (paling sering karena tanda kutip di dalam formula tidak
+// di-escape dengan benar oleh model, atau respons terpotong), coba SEKALI LAGI
+// dengan instruksi yang lebih tegas sebelum benar-benar menyerah.
 async function callAIJson({ system, user, maxTokens = 1024, provider }) {
   const raw = await callAI({ system, user, maxTokens, provider });
 

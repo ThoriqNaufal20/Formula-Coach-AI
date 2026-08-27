@@ -47,11 +47,9 @@ const el = {
 };
 
 // Browser bisa memblokir akses localStorage (mis. dibuka via file:// langsung,
-// mode private/incognito ketat, atau pengaturan privasi tertentu). Kalau ini
-// terjadi dan localStorage diakses langsung tanpa pengaman, satu error di awal
-// bisa menghentikan SELURUH script -- akibatnya semua tombol di halaman jadi
-// tidak merespons. Wrapper ini mencegah itu: kalau storage tidak tersedia,
-// aplikasi tetap jalan normal, cuma tanpa fitur "ingat pilihan terakhir".
+// mode private/incognito ketat). Wrapper ini mencegah itu menghentikan
+// seluruh script -- aplikasi tetap jalan normal, cuma tanpa fitur "ingat
+// pilihan terakhir" kalau storage tidak tersedia.
 function safeStorageGet(key) {
   try {
     return localStorage.getItem(key);
@@ -98,9 +96,6 @@ function moveTabIndicator(tabEl) {
 }
 
 function playPanelEnter(panel) {
-  // Reflow-trigger: lepas kelasnya, paksa browser "membaca ulang" elemen (reflow),
-  // baru pasang lagi -- supaya animasi CSS-nya benar-benar replay tiap kali
-  // panel diaktifkan, bukan cuma sekali di awal saat halaman pertama dimuat.
   panel.classList.remove("panel-enter");
   void panel.offsetWidth;
   panel.classList.add("panel-enter");
@@ -127,10 +122,7 @@ el.tabs.forEach((tab) => {
 
     state.activeTab = target;
 
-    // Formula bar hanya relevan untuk mode Jelaskan/Perbaiki
     el.formulaBar.classList.toggle("is-hidden", target === "generate");
-
-    // Tab Generate butuh ruang lebih lebar untuk grid yang bisa banyak kolom
     el.workspace.classList.toggle("wide", target === "generate");
 
     if (target === "fix") {
@@ -141,8 +133,6 @@ el.tabs.forEach((tab) => {
   });
 });
 
-// Posisikan indikator ke tab aktif saat halaman pertama dimuat, dan sesuaikan
-// lagi kalau ukuran jendela berubah (posisi/lebar tab bisa berubah di layar sempit)
 moveTabIndicator(document.querySelector(".tab.active"));
 window.addEventListener("load", () => moveTabIndicator(document.querySelector(".tab.active")));
 window.addEventListener("resize", () => moveTabIndicator(document.querySelector(".tab.active")));
@@ -163,8 +153,6 @@ function debounce(fn, delayMs) {
   };
 }
 
-// Ubah tombol "Salin" jadi "✓ Tersalin" sebentar sebagai konfirmasi visual
-// langsung di tombolnya, bukan cuma lewat toast.
 function flashCopyButton(btn) {
   const originalText = btn.textContent;
   btn.textContent = "✓ Tersalin";
@@ -180,7 +168,6 @@ function showToast(msg) {
   el.toastText.textContent = msg;
   el.toast.hidden = false;
 
-  // Reflow-trigger supaya progress bar-nya restart dari awal tiap kali toast baru muncul
   el.toastProgress.style.animation = "none";
   void el.toastProgress.offsetWidth;
   el.toastProgress.style.animation = "";
@@ -192,12 +179,11 @@ function showToast(msg) {
 function escapeHTML(str) {
   const div = document.createElement("div");
   div.textContent = str ?? "";
-  // div.innerHTML meng-escape &, <, > secara otomatis, tapi TIDAK meng-escape
-  // tanda kutip (karena di dalam text node biasa itu memang aman). Masalahnya,
-  // fungsi ini juga dipakai untuk membangun atribut HTML seperti
-  // data-formula="...". Kalau formula punya tanda kutip mentah di dalamnya
-  // (misal ="SELECT ... 'Total Qty'"), atribut itu jadi terpotong di situ.
-  // Makanya kutip ganda & tunggal di-escape manual juga di sini.
+  // div.innerHTML meng-escape &, <, > otomatis, tapi TIDAK meng-escape tanda
+  // kutip (di text node biasa itu aman). Masalahnya, fungsi ini juga dipakai
+  // untuk membangun atribut HTML seperti data-formula="...". Kalau formula
+  // punya tanda kutip mentah (misal ="SELECT ... 'Total Qty'"), atribut itu
+  // jadi terpotong di situ -- makanya di-escape manual juga di sini.
   return div.innerHTML.replace(/"/g, "&quot;").replace(/'/g, "&#39;");
 }
 
@@ -214,9 +200,6 @@ async function postJSON(url, body) {
   return data;
 }
 
-// Tukar ikon panah jadi spinner berputar selagi menunggu respons AI, dan
-// balikin lagi setelah selesai -- supaya tombol tidak cuma "diam ke-disable"
-// tanpa penjelasan visual kenapa.
 function toggleButtonSpinner(button, isLoading) {
   const spinner = button.querySelector(".btn-spinner");
   const arrow = button.querySelector(".btn-arrow");
@@ -418,8 +401,8 @@ const WORKBOOK_STORAGE_KEY = "formula-coach:workbook";
 const HISTORY_STORAGE_KEY = "formula-coach:generate-history";
 const MAX_HISTORY = 10;
 
-const MAX_ROWS = 10; // termasuk baris header
-const MIN_ROWS = 2; // minimal header + 1 baris data
+const MAX_ROWS = 10;
+const MIN_ROWS = 2;
 const MAX_COLS = 10;
 const MIN_COLS = 1;
 const MAX_SHEETS = 3;
@@ -452,9 +435,6 @@ function saveWorkbook() {
   safeStorageSet(WORKBOOK_STORAGE_KEY, JSON.stringify(workbook));
 }
 
-// Menulis ke localStorage itu operasi synchronous yang bisa memblokir main
-// thread sesaat. Kalau dipanggil di tiap keystroke, ini bikin interaksi
-// (mengetik di grid) terasa lambat — makanya di-debounce, bukan langsung tiap huruf.
 const debouncedSaveWorkbook = debounce(saveWorkbook, 400);
 
 function loadHistory() {
@@ -558,16 +538,12 @@ function renameSheet(index) {
 }
 
 // ---- Grid (baris/kolom dinamis) --------------------------------------
-// Event delegation: SATU listener terpasang sekali di sini untuk seluruh grid,
-// bukan dipasang ulang per sel setiap kali renderGrid() jalan. Ini mengurangi
-// beban main-thread yang signifikan tiap kali tambah baris/kolom/pindah sheet
-// (terutama kerasa di device yang lebih lemah dibanding yang dipakai buat testing).
 el.sheetGrid.addEventListener("input", (e) => {
   if (!e.target.classList.contains("sheet-input")) return;
   const r = Number(e.target.dataset.row);
   const c = Number(e.target.dataset.col);
-  activeSheet().cells[r][c] = e.target.value; // state di memori tetap instan
-  debouncedSaveWorkbook(); // penulisan ke localStorage yang ditunda
+  activeSheet().cells[r][c] = e.target.value;
+  debouncedSaveWorkbook();
 });
 
 el.sheetGrid.addEventListener("click", (e) => {
@@ -577,6 +553,9 @@ el.sheetGrid.addEventListener("click", (e) => {
   else if (btn.dataset.removeCol !== undefined) removeColumn(Number(btn.dataset.removeCol));
 });
 
+let lastAddedRowIndex = null;
+let lastAddedColIndex = null;
+
 function renderGrid() {
   const sheet = activeSheet();
   const rowCount = sheet.cells.length;
@@ -584,9 +563,6 @@ function renderGrid() {
 
   el.sheetGrid.style.gridTemplateColumns = `22px repeat(${colCount}, minmax(60px, 1fr))`;
 
-  // Semua elemen dibangun dulu di dalam fragment (di memori, belum masuk halaman),
-  // baru di-append SEKALI ke DOM nyata -- jadi cuma satu kali reflow/layout,
-  // bukan berkali-kali tiap appendChild seperti sebelumnya.
   const fragment = document.createDocumentFragment();
 
   const corner = document.createElement("div");
@@ -649,19 +625,12 @@ function renderGrid() {
   el.sheetGrid.innerHTML = "";
   el.sheetGrid.appendChild(fragment);
 
-  // Sudah dipakai untuk render kali ini -- reset supaya render berikutnya
-  // (mis. pindah sheet lalu balik lagi) tidak ikut nge-flash ulang.
   lastAddedRowIndex = null;
   lastAddedColIndex = null;
 
   el.addRowBtn.disabled = rowCount >= MAX_ROWS;
   el.addColBtn.disabled = colCount >= MAX_COLS;
 }
-
-// Menandai baris/kolom yang baru saja ditambahkan, supaya renderGrid() tahu
-// mana yang perlu di-highlight sebentar (class .cell-flash).
-let lastAddedRowIndex = null;
-let lastAddedColIndex = null;
 
 function addRow() {
   const sheet = activeSheet();
@@ -716,8 +685,6 @@ el.gridResetBtn.addEventListener("click", () => {
   showToast(`Sheet "${sheet.name}" dikosongkan.`);
 });
 
-// Seluruh sheet dikirim ke AI, bukan cuma yang sedang aktif dilihat —
-// supaya formula lintas-sheet (mis. Referensi!B:B) bisa dibuat dengan akurat.
 function workbookToPayload() {
   return {
     sheets: workbook.sheets.map((sheet) => ({

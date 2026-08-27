@@ -1,8 +1,4 @@
 // api/providers.js
-// Endpoint ringan untuk memberi tahu frontend provider mana saja yang API key-nya
-// sudah dikonfigurasi di server, supaya dropdown bisa menandai status "siap" vs "belum diatur".
-// Tidak pernah mengembalikan isi API key, hanya boolean status.
-
 module.exports = async (req, res) => {
   const status = {
     groq: Boolean(process.env.GROQ_API_KEY),

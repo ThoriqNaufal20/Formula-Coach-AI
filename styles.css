@@ -305,7 +305,6 @@ body {
 .tab.active .tab-index { color: var(--accent); }
 .tab:hover:not(.active) { color: var(--text-secondary); }
 
-/* Indikator garis bawah yang meluncur antar tab (posisi & lebar diatur lewat JS) */
 .tab-indicator {
   position: absolute;
   bottom: -1px;
@@ -398,7 +397,7 @@ body {
 .btn-primary:hover .btn-arrow { transform: translateX(3px); }
 
 /* ===========================================================
-   Result area
+   Result area (scroll internal, tidak nge-grow halaman)
 =========================================================== */
 .result-area {
   margin-top: 28px;
@@ -423,7 +422,6 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* Tiap blok hasil muncul sedikit setelah blok sebelumnya, bukan barengan instan */
 .result-block:nth-child(1) { animation-delay: 0ms; }
 .result-block:nth-child(2) { animation-delay: 70ms; }
 .result-block:nth-child(3) { animation-delay: 140ms; }
@@ -594,7 +592,6 @@ body {
   line-height: 1.5;
 }
 
-/* Sheet tabs */
 .sheet-tabs {
   display: flex;
   align-items: center;
@@ -655,7 +652,6 @@ body {
 .sheet-tab-add:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
 .sheet-tab-add:disabled { opacity: 0.35; cursor: not-allowed; }
 
-/* Grid */
 .sheet-grid-wrap { overflow-x: auto; border-radius: var(--radius-sm); }
 
 .sheet-grid {
@@ -680,8 +676,6 @@ body {
   to { opacity: 1; }
 }
 
-/* Ditambahkan sementara lewat JS ke baris/kolom yang baru dibuat, supaya
-   peserta langsung sadar mana yang baru ditambahkan */
 .sheet-cell.cell-flash {
   animation: cellIn 0.2s ease backwards, cellFlash 0.9s ease;
 }
@@ -742,7 +736,6 @@ body {
 .sheet-input:focus { background: var(--accent-soft); color: var(--text-primary); }
 .sheet-row-1 .sheet-input { color: var(--accent); font-weight: 600; }
 
-/* Grid controls */
 .grid-controls {
   display: flex;
   align-items: center;
@@ -778,7 +771,7 @@ body {
 
 .grid-reset-btn:hover { color: var(--text-secondary); border-color: var(--border-soft); }
 
-/* Chat panel */
+/* Chat panel — scroll internal supaya input tetap terlihat */
 .chat-panel {
   background: var(--surface);
   border: 1px solid var(--border);
@@ -894,7 +887,6 @@ body {
   gap: 8px;
 }
 
-/* Indikator "AI sedang mikir" berupa titik-titik yang berkedip bergantian */
 .typing-dots {
   display: flex;
   align-items: center;
@@ -1032,7 +1024,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 }
 
 /* ===========================================================
-   Micro-interactions berlaku umum: tekan tombol, spinner loading,
+   Micro-interactions umum: tekan tombol, spinner loading,
    feedback tombol salin
 =========================================================== */
 button:not(:disabled) {
@@ -1055,8 +1047,8 @@ button:not(:disabled):active {
 }
 
 /* Perbaikan: display:inline-block di atas "menang" lawan atribut [hidden]
-   bawaan browser (sama-sama author-origin, jadi override normal tidak cukup).
-   Aturan ini eksplisit mengembalikan perilaku hidden yang benar. */
+   bawaan browser (sama-sama author-origin). Aturan ini eksplisit
+   mengembalikan perilaku hidden yang benar. */
 .btn-spinner[hidden] { display: none; }
 
 @keyframes spin { to { transform: rotate(360deg); } }
