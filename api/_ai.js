@@ -26,7 +26,12 @@ async function fetchWithRetry(url, options, { retries = 2, delayMs = 1000 } = {}
     lastRes = await fetch(url, options);
     if (lastRes.ok) return lastRes;
 
-    const isTransient = lastRes.status === 429 || (lastRes.status >= 500 && lastRes.status <= 599);
+    // Cuma retry untuk 5xx (server AI lagi sibuk sesaat -- biasanya pulih
+    // dalam hitungan detik). 429 (rate limit / kuota habis) SENGAJA tidak
+    // di-retry di sini: kuota tier gratis biasanya butuh nunggu jauh lebih
+    // lama (bisa puluhan detik sampai reset harian) daripada jeda backoff
+    // kita, jadi mengulang otomatis cuma buang waktu tanpa hasil.
+    const isTransient = lastRes.status >= 500 && lastRes.status <= 599;
     if (!isTransient || attempt === retries) return lastRes;
 
     // Exponential backoff: jeda makin panjang tiap percobaan (1s, 2s, 4s, ...)
@@ -175,6 +180,11 @@ async function callGemini({ system, user, maxTokens }) {
     if (res.status === 503) {
       throw new Error(
         "Server Gemini sedang sangat sibuk (bukan masalah dari sisi kamu). Sudah dicoba ulang otomatis 2 kali tapi tetap gagal. Coba lagi sebentar lagi, atau ganti ke Groq di dropdown Model AI untuk saat ini."
+      );
+    }
+    if (res.status === 429) {
+      throw new Error(
+        "Kuota gratis Gemini untuk hari ini sudah habis (tier gratis dibatasi cukup ketat, mis. 20 request/hari untuk beberapa model). Ini bukan error sementara -- menunggu beberapa detik tidak akan membantu. Ganti ke Groq di dropdown Model AI, atau coba lagi besok setelah kuota reset."
       );
     }
     const errText = await res.text();
