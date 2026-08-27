@@ -20,7 +20,7 @@ const PROVIDER_LABEL = {
 // atau rate limit 429) -- ini bersifat sementara, bukan error kode. Wrapper
 // ini otomatis coba ulang SEKALI setelah jeda singkat sebelum benar-benar
 // melempar error ke peserta.
-async function fetchWithRetry(url, options, { retries = 1, delayMs = 1200 } = {}) {
+async function fetchWithRetry(url, options, { retries = 2, delayMs = 1000 } = {}) {
   let lastRes;
   for (let attempt = 0; attempt <= retries; attempt++) {
     lastRes = await fetch(url, options);
@@ -29,7 +29,10 @@ async function fetchWithRetry(url, options, { retries = 1, delayMs = 1200 } = {}
     const isTransient = lastRes.status === 429 || (lastRes.status >= 500 && lastRes.status <= 599);
     if (!isTransient || attempt === retries) return lastRes;
 
-    await new Promise((resolve) => setTimeout(resolve, delayMs));
+    // Exponential backoff: jeda makin panjang tiap percobaan (1s, 2s, 4s, ...)
+    // supaya kalau server memang sedang sibuk berkepanjangan (bukan cuma
+    // "nyendat" sesaat), kita tidak langsung nembak ulang di waktu yang sama.
+    await new Promise((resolve) => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
   }
   return lastRes;
 }
@@ -169,6 +172,11 @@ async function callGemini({ system, user, maxTokens }) {
   });
 
   if (!res.ok) {
+    if (res.status === 503) {
+      throw new Error(
+        "Server Gemini sedang sangat sibuk (bukan masalah dari sisi kamu). Sudah dicoba ulang otomatis 2 kali tapi tetap gagal. Coba lagi sebentar lagi, atau ganti ke Groq di dropdown Model AI untuk saat ini."
+      );
+    }
     const errText = await res.text();
     throw new Error(`Gemini API error (${res.status}): ${errText}`);
   }
